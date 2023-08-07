@@ -68,4 +68,8 @@ app.put('/api/comments/:comment_id', function(req, res) {
 });
 
 app.delete('/api/comments/:comment_id', function(req, res) {
-    Comment.remove({_id: req.params.comment_id}, function(err, output
+    Comment.remove({_id: req.params.comment_id}, function(err, output) {
+        if (err) return res.status(500).json({error: 'database failure'});
+        res.status(204).end();
+    });
+});
