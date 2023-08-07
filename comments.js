@@ -1,75 +1,57 @@
-// Create Web Server
+// Create web server and listen to port 3000
+// Use the Express framework to create a web server
 var express = require('express');
 var app = express();
+// Use body-parser to parse the contents of the body of a POST request
 var bodyParser = require('body-parser');
-var mongoose = require('mongoose');
-mongoose.connect('mongodb://localhost:27017/test');
-var db = mongoose.connection;
-
-app.use(bodyParser.json());
+// Create a MongoDB client and connect to the database
+var MongoClient = require('mongodb').MongoClient;
+var url = 'mongodb://localhost:27017';
+var ObjectID = require('mongodb').ObjectID;
+var DB;
+MongoClient.connect(url, function(err, client) {
+  if (err) throw err;
+  DB = client.db('commentDB');
+});
+// Use the static files in the public directory
+app.use(express.static('public'));
+// Use body-parser to parse the contents of the body of a POST request
 app.use(bodyParser.urlencoded({extended: true}));
-
-// Create Schema
-var commentSchema = mongoose.Schema({
-    name: String,
-    comment: String,
-    time: String
+// Use body-parser to parse the contents of the body of a POST request
+app.use(bodyParser.json());
+// Set up the server to listen on port 3000
+app.listen(3000, function() {
+  console.log('Server listening on port 3000');
 });
-
-// Create Model
-var Comment = mongoose.model('Comment', commentSchema);
-
-// Create Router
-app.get('/api/comments', function(req, res) {
-    Comment.find(function(err, comments) {
-        if (err) return res.status(500).send({error: 'database failure'});
-        res.json(comments);
-    })
+// Handle GET requests to the /comments route
+app.get('/comments', function(req, res) {
+  // Get the comments collection
+  var collection = DB.collection('comments');
+  // Find all of the documents in the collection
+  collection.find({}).toArray(function(err, docs) {
+    // Send the results to the client as JSON
+    res.json(docs);
+  });
 });
-
-app.get('/api/comments/:comment_id', function(req, res) {
-    Comment.findOne({_id: req.params.comment_id}, function(err, comment) {
-        if (err) return res.status(500).json({error: err});
-        if (!comment) return res.status(404).json({error: 'comment not found'});
-        res.json(comment);
-    })
+// Handle POST requests to the /comments route
+app.post('/comments', function(req, res) {
+  // Get the comments collection
+  var collection = DB.collection('comments');
+  // Insert the comment into the collection
+  collection.insert(req.body, function(err, docs) {
+    // Send a message to the client
+    res.send('Successfully inserted comment');
+  });
 });
-
-app.post('/api/comments', function(req, res) {
-    var comment = new Comment();
-    comment.name = req.body.name;
-    comment.comment = req.body.comment;
-    comment.time = req.body.time;
-
-    comment.save(function(err) {
-        if (err) {
-            console.error(err);
-            res.json({result: 0});
-            return;
-        }
-        res.json({result: 1});
-    });
-});
-
-app.put('/api/comments/:comment_id', function(req, res) {
-    Comment.findById(req.params.comment_id, function(err, comment) {
-        if (err) return res.status(500).json({error: 'database failure'});
-        if (!comment) return res.status(404).json({error: 'comment not found'});
-
-        if (req.body.name) comment.name = req.body.name;
-        if (req.body.comment) comment.comment = req.body.comment;
-        if (req.body.time) comment.time = req.body.time;
-
-        comment.save(function(err) {
-            if (err) res.status(500).json({error: 'failed to update'});
-            res.json({message: 'comment updated'});
-        });
-    });
-});
-
-app.delete('/api/comments/:comment_id', function(req, res) {
-    Comment.remove({_id: req.params.comment_id}, function(err, output) {
-        if (err) return res.status(500).json({error: 'database failure'});
-        res.status(204).end();
-    });
+// Handle DELETE requests to the /comments route
+app.delete('/comments/:id', function(req, res) {
+  // Get the comments collection
+  var collection = DB.collection('comments');
+  // Create a new ObjectID
+  var id = new ObjectID(req.params.id);
+  // Delete the comment with the specified ID
+  collection.deleteOne({_id: id}, function(err, docs) {
+    // Send a message to the client
+    res.send('Successfully deleted comment');
+  });
 });
